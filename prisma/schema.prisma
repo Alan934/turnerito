@@ -1,0 +1,268 @@
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  patient
+  practitioner
+  organization
+  secretary
+  practitioner_secretary
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  RATHER_NOT_SAY
+}
+
+enum DocumentType {
+  DNI
+  PASSPORT
+}
+
+enum Day {
+  Sunday
+  Monday
+  Tuesday
+  Wednesday
+  Thursday
+  Friday
+  Saturday
+}
+
+enum AppointmentStatus {
+  pending
+  under_review
+  approved
+  cancelled
+  completed
+  no_show
+}
+
+model User {
+  id           String   @id @default(uuid())
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+  
+  email        String?  @unique
+  password     String?
+  role         Role
+  
+  // Relations
+  practitioner Practitioner?
+  
+  @@map("user")
+}
+
+model Practitioner {
+  id                  String      @id @default(uuid())
+  userId              String      @unique
+  user                User        @relation(fields: [userId], references: [id])
+  
+  // Personal info
+  name                String?
+  lastName            String?     @map("last_name")
+  gender              Gender?
+  birth               String?
+  documentType        DocumentType? @map("document_type") @default(DNI)
+  dni                 String?     @unique
+  phone               String?
+  urlImg              String?     @map("url_img")
+  
+  // Professional info
+  license             String?
+  rating              Float       @default(0.0)
+  homeService         Boolean     @map("home_service") @default(false)
+  durationAppointment Int         @default(30) @map("duration_appointment")
+  acceptedSocialWorks Boolean     @map("accepted_social_works") @default(false)
+  consultationTime    String?     @map("consultation_time")
+  
+  // Relations
+  professionalDegree  ProfessionalDegree? @relation(fields: [professionalDegreeId], references: [id])
+  professionalDegreeId String?            @map("professional_degree_id")
+  
+  practitionerRoles   PractitionerRole[]  @relation("PractitionerToPractitionerRole")
+  addresses           Address[]           @relation("PractitionerToAddress")
+  socialWorks         PractitionerSocialWork[]
+  appointments        Appointment[]
+  favorites           PatientPractitionerFavorite[]
+  
+  @@map("practitioner")
+}
+
+model Patient {
+  id               String               @id @default(uuid())
+  
+  // Personal info
+  name             String?
+  lastName         String?              @map("last_name")
+  gender           Gender?
+  birth            String?
+  documentType     DocumentType?        @map("document_type") @default(DNI)
+  dni              String?              @unique
+  phone            String?
+  urlImg           String?              @map("url_img")
+  
+  // Relations
+  socialWorkEnrollment SocialWorkEnrollment?
+  addresses        Address[]            
+  appointments     Appointment[]
+  favorites        PatientPractitionerFavorite[]
+  
+  @@map("patient")
+}
+
+model ProfessionalDegree {
+  id          String         @id @default(uuid())
+  name        String
+  practitioners Practitioner[]
+  
+  @@map("professional_degree")
+}
+
+model PractitionerRole {
+  id           String         @id @default(uuid())
+  name         String         @unique
+  canPrescribe Boolean?       @map("can_prescribe")
+  
+  // Relations
+  practitioners Practitioner[] @relation("PractitionerToPractitionerRole")
+  tags          Category[]     @relation("PractitionerRoleToCategory")
+  
+  @@map("practitioner_role")
+}
+
+model Category {
+  id                String             @id @default(uuid())
+  name              String
+  practitionerRoles PractitionerRole[] @relation("PractitionerRoleToCategory")
+  
+  @@map("category")
+}
+
+model Address {
+  id             String       @id @default(uuid())
+  street         String?
+  number         String?
+  city           String?
+  state          String?
+  country        String?
+  postalCode     String?      @map("postal_code")
+  
+  // Relations
+  practitioners  Practitioner[] 
+  patients       Patient[]      
+  
+  @@map("address")
+}
+
+model SocialWorkEnrollment {
+  id            String      @id @default(uuid())
+  memberNum     String?     @map("member_number")
+  plan          String?
+  
+  // Relations
+  socialWork    SocialWork? @relation(fields: [socialWorkId], references: [id])
+  socialWorkId  String?     @map("social_work_id")
+  patient       Patient?    @relation(fields: [patientId], references: [id])
+  patientId     String?     @map("patient_id")
+  
+  @@map("social_work_enrollment")
+}
+
+model SocialWork {
+  id        String                     @id @default(uuid())
+  name      String?
+  phone     String?
+  website   String?
+  
+  // Relations
+  enrollments SocialWorkEnrollment[]
+  practitioners PractitionerSocialWork[]
+  
+  @@map("social_work")
+}
+
+model PractitionerSocialWork {
+  id            String      @id @default(uuid())
+  price         Float
+  
+  // Relations
+  practitioner  Practitioner @relation(fields: [practitionerId], references: [id])
+  practitionerId String      @map("practitioner_id")
+  socialWork    SocialWork   @relation(fields: [socialWorkId], references: [id])
+  socialWorkId  String       @map("social_work_id")
+  
+  @@map("practitioner_social_work")
+}
+
+model PatientPractitionerFavorite {
+  id             String       @id @default(uuid())
+  
+  // Relations
+  patient        Patient      @relation(fields: [patientId], references: [id])
+  patientId      String       @map("patient_id")
+  practitioner   Practitioner @relation(fields: [practitionerId], references: [id])
+  practitionerId String       @map("practitioner_id")
+  
+  @@map("patient_practitioner_favorite")
+}
+
+model Appointment {
+  id           String        @id @default(uuid())
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  deletedAt    DateTime?     @map("deleted_at")
+  
+  date         String
+  hour         String
+  observation  String?
+  status       AppointmentStatus @default(pending)
+  reprogrammed Boolean?      @default(false)
+  
+  // Reminder fields
+  email3       String?
+  email24      String?
+  whats3       String?
+  whats24      String?
+  
+  // Relations
+  patient      Patient?      @relation(fields: [patientId], references: [id])
+  patientId    String?       @map("patient_id")
+  practitioners Practitioner[] @relation("AppointmentToPractitioner")
+  patientAppointments PatientAppointment[]
+  
+  @@map("appointment")
+}
+
+model PatientAppointment {
+  id            String      @id @default(uuid())
+  
+  // Relations
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  appointmentId String      @map("appointment_id")
+  
+  @@map("patient_appointment")
+}
+
+// Junction table for Appointment to Practitioner many-to-many relationship
+model _AppointmentToPractitioner {
+  appointmentId    String       @map("appointment_id")
+  practitionerId   String       @map("practitioner_id")
+  appointment      Appointment  @relation(fields: [appointmentId], references: [id])
+  practitioner     Practitioner @relation(fields: [practitionerId], references: [id])
+
+  @@id([appointmentId, practitionerId])
+  @@map("appointment_practitioners")
+}
