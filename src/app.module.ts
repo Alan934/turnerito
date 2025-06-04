@@ -15,12 +15,14 @@ import { PractitionerSocialWorkModule } from './modules/practitioner-social-work
 import { PatientPractitionerFavoriteModule } from './modules/patient-practitioner-favorite/patient-practitioner-favorite.module';
 import { PatientAppointmentModule } from './modules/patient-appointment/patient-appointment.module';
 import { ConfigModule } from '@nestjs/config';
+import { PrismaModule } from 'prisma/prisma.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    PrismaModule,
     PatientModule,
     AppointmentModule,
     PractitionerModule,

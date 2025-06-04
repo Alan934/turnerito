@@ -92,10 +92,10 @@ model Practitioner {
   professionalDegree  ProfessionalDegree? @relation(fields: [professionalDegreeId], references: [id])
   professionalDegreeId String?            @map("professional_degree_id")
   
-  practitionerRoles   PractitionerRole[]  @relation("PractitionerToPractitionerRole")
+  appointments Appointment[] @relation("AppointmentToPractitioner")
   addresses           Address[]           @relation("PractitionerToAddress")
+  practitionerRoles   PractitionerRole[]  @relation("PractitionerToPractitionerRole")
   socialWorks         PractitionerSocialWork[]
-  appointments        Appointment[]
   favorites           PatientPractitionerFavorite[]
   
   @@map("practitioner")
@@ -161,7 +161,7 @@ model Address {
   postalCode     String?      @map("postal_code")
   
   // Relations
-  practitioners  Practitioner[] 
+  practitioners Practitioner[] @relation("PractitionerToAddress")
   patients       Patient[]      
   
   @@map("address")
@@ -176,7 +176,7 @@ model SocialWorkEnrollment {
   socialWork    SocialWork? @relation(fields: [socialWorkId], references: [id])
   socialWorkId  String?     @map("social_work_id")
   patient       Patient?    @relation(fields: [patientId], references: [id])
-  patientId     String?     @map("patient_id")
+  patientId     String?     @unique @map("patient_id")
   
   @@map("social_work_enrollment")
 }
@@ -256,13 +256,3 @@ model PatientAppointment {
   @@map("patient_appointment")
 }
 
-// Junction table for Appointment to Practitioner many-to-many relationship
-model _AppointmentToPractitioner {
-  appointmentId    String       @map("appointment_id")
-  practitionerId   String       @map("practitioner_id")
-  appointment      Appointment  @relation(fields: [appointmentId], references: [id])
-  practitioner     Practitioner @relation(fields: [practitionerId], references: [id])
-
-  @@id([appointmentId, practitionerId])
-  @@map("appointment_practitioners")
-}
